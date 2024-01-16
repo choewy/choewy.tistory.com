@@ -1131,7 +1131,9 @@ a.btn {
   color: #666;
 }
 .another_category table th {
-  padding: 8px 0 4px;
+  width: 100%;
+  height: 25px;
+  padding: 0 0 0 5px !important;
   border: 0 !important;
   text-align: left;
   font-weight: 400;
@@ -1142,9 +1144,9 @@ a.btn {
 }
 .another_category td {
   width: 60px;
-  padding: 8px 0 4px;
-  border-left: 0 !important;
-  border-top: 0 !important;
+  height: 25px;
+  padding: 0 5px 0 0 !important;
+  border: 0 !important;
   font-size: 0.8125em;
   line-height: 1;
   color: #b2b2b2;
