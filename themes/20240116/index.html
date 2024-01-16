@@ -370,15 +370,15 @@
   <script src="./images/script.js"></script>
   <script>
     const renderToc = () => {
-      const element = document.querySelector('#content .entry-content .tt_article_useless_p_margin')
+      const article = document.querySelector('#content .entry-content .tt_article_useless_p_margin');
 
-      if (element == null) {
-        return
+      if (article) {
+        renderTableOfContents(article, article, '목차', {
+          padding: '20px',
+          backgroundColor: '#f6f8fa',
+          borderRadius: '0.5rem'
+        });
       }
-
-      element.prepend(document.createElement('div'));
-
-      new TocMaker(element.firstElementChild, element, '목차', 3).render()
     }
 
     const renderMermaid = () => {

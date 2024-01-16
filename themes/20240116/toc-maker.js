@@ -1,188 +1,153 @@
-class Content {
-  id;
-  href;
-  depth;
-  title;
-  parent;
-  children;
+const extractTitles = (titles, node, depthLimit = 3) => {
+  const tagName = node.tagName ?? '';
+  const depth = Number(tagName.replace('H', ''));
 
-  constructor(id, depth, title) {
-    this.id = id;
-    this.href = `#${id}`;
-    this.depth = depth;
-    this.title = title;
-    this.parent = null;
-    this.children = [];
+  if (Number.isNaN(depth) === false && depth <= depthLimit) {
+    titles.push(node);
   }
 
-  appendChild(child) {
-    this.children.push(child);
+  for (const child of node.children) {
+    extractTitles(titles, child);
   }
 
-  setParent(parent) {
-    this.parent = parent;
+  return titles;
+};
 
-    return this;
-  }
+const createContent = (element) => {
+  element.id = element.textContent.replaceAll('.', '_').replaceAll(' ', '_');
 
-  findParentOrderThanCurrentDepth(depth) {
-    let parent = this;
+  return {
+    id: element.id,
+    href: `#${element.id}`,
+    depth: Number(element.tagName.replace('H', '')),
+    text: element.textContent,
+    parent: null,
+    children: [],
+    setRelations(parent) {
+      this.parent = parent;
+      this.parent.children.push(this);
 
-    while (parent) {
-      if (parent.depth < depth) {
-        break;
-      }
+      return this;
+    },
+    findParent(depth) {
+      let parent = this;
 
-      parent = parent.parent;
-    }
-
-    return parent;
-  }
-}
-
-class TocMaker {
-  ref;
-  element;
-  title;
-  depth;
-
-  constructor(
-    ref = document.createElement('div'),
-    element = document.querySelector('body'),
-    title = 'Table of Contents',
-    depth = 6,
-  ) {
-    this.ref = ref;
-    this.ref.id = 'toc';
-    this.element = element;
-    this.title = title;
-    this.depth = depth;
-  }
-
-  #extractElements(elements, node, content) {
-    const tagName = node.tagName ?? '';
-    const depth = Number(tagName.replace('H', ''));
-
-    if (Number.isNaN(depth) === false && depth <= this.depth) {
-      elements.push(node);
-    }
-
-    for (const child of node.children) {
-      this.#extractElements(elements, child, content);
-    }
-  }
-
-  createContents(elements, contents) {
-    let last = null;
-
-    while (elements.length > 0) {
-      const element = elements.shift();
-
-      element.id = element.textContent
-        .replaceAll('.', '_')
-        .replaceAll(' ', '_');
-
-      const depth = Number(element.tagName.replace('H', ''));
-      const content = new Content(element.id, depth, element.textContent);
-
-      if (last === null) {
-        last = content;
-        contents.push(last);
-        continue;
-      }
-
-      if (last.depth === content.depth) {
-        if (last.parent) {
-          last.parent.appendChild(content);
-          last = content.setParent(last.parent);
-
-          continue;
+      while (parent) {
+        if (parent.depth < depth) {
+          break;
         }
+
+        parent = parent.parent;
       }
 
-      if (last.depth < content.depth) {
-        last.appendChild(content);
-        last = content.setParent(last);
+      return parent;
+    },
+  };
+};
 
-        continue;
-      }
+const createContents = (titles) => {
+  const contents = [];
 
-      if (last.depth > content.depth) {
-        const parent = last.findParentOrderThanCurrentDepth(content.depth);
+  let last = null;
 
-        if (parent) {
-          parent.appendChild(content);
-          last = content.setParent(parent);
+  while (titles.length > 0) {
+    const content = createContent(titles.shift());
 
-          continue;
-        }
-      }
-
+    if (last === null) {
       last = content;
       contents.push(last);
+
+      continue;
     }
 
-    return contents;
-  }
+    if (last.depth < content.depth) {
+      last = content.setRelations(last);
 
-  #contentToElement(elements, content) {
-    const anchor = document.createElement('a');
-
-    anchor.innerText = content.title;
-    anchor.href = content.href;
-
-    const li = document.createElement('li');
-
-    li.appendChild(anchor);
-    li.style.paddingLeft = `${10 * content.depth}px`;
-
-    elements.push(li);
-
-    for (const child of content.children) {
-      this.#contentToElement(elements, child);
+      continue;
     }
-  }
 
-  #renderContents(contents) {
-    const h1 = document.createElement('h1');
-    const ul = document.createElement('ul');
-    const hr = document.createElement('hr');
-    const li = [];
+    if (last.depth === content.depth) {
+      if (last.parent) {
+        last = content.setRelations(last.parent);
 
-    while (true) {
-      const content = contents.shift();
-
-      if (content == null) {
-        break;
+        continue;
       }
-
-      this.#contentToElement(li, content);
     }
 
-    h1.innerText = this.title;
-    ul.style.padding = '20px';
-    ul.style.listStyle = 'none';
-    ul.style.backgroundColor = '#f6f8fa';
-    ul.style.borderRadius = '0.5rem';
+    if (last.depth > content.depth) {
+      const parent = last.findParent(content.depth);
 
-    ul.append(...li);
-    this.ref.append(h1, ul, hr);
-  }
+      if (parent) {
+        last = content.setRelations(parent);
 
-  render() {
-    const elements = [];
-    const contents = [];
-
-    this.#extractElements(elements, this.element, null);
-    this.createContents(elements, contents);
-    this.#renderContents(contents);
-  }
-
-  remove() {
-    const children = Array.from(this.ref.childNodes);
-
-    while (children.length > 0) {
-      this.ref.removeChild(children.pop());
+        continue;
+      }
     }
+
+    last = content;
+    contents.push(content);
   }
-}
+
+  return contents;
+};
+
+const createTocText = (text) => {
+  const h1 = document.createElement('h1');
+
+  h1.innerText = text;
+
+  return h1;
+};
+
+const createTocListItems = (items, content) => {
+  const anchor = document.createElement('a');
+
+  anchor.innerText = content.text;
+  anchor.href = content.href;
+
+  const li = document.createElement('li');
+
+  li.appendChild(anchor);
+  li.style.paddingLeft = `${10 * content.depth}px`;
+
+  items.push(li);
+
+  for (const child of content.children) {
+    createTocListItems(items, child);
+  }
+
+  return items;
+};
+
+const createTocList = (contents, styles = {}) => {
+  styles.listStyle = 'none';
+
+  const ul = document.createElement('ul');
+
+  for (const [key, val] of Object.entries(styles)) {
+    ul.style[key] = val;
+  }
+
+  while (contents.length > 0) {
+    ul.append(...createTocListItems([], contents.shift()));
+  }
+
+  return ul;
+};
+
+const renderTableOfContents = (
+  toc,
+  target,
+  text,
+  styles = {},
+  depthLimit = 3,
+) => {
+  const titles = extractTitles([], target, depthLimit);
+  const contents = createContents(titles);
+
+  toc.prepend(
+    createTocText(text),
+    createTocList(contents, styles),
+    document.createElement('hr'),
+  );
+};

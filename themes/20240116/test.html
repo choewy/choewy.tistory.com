@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="./toc-maker.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const article = document.getElementById('article')
+
+      if (article) {
+        renderTableOfContents(article, article, 'Table of Contents', {
+          padding: '20px',
+          backgroundColor: '#f6f8fa',
+          borderRadius: '0.5rem'
+        })
+      }
+    })
+  </script>
+  <title>Document</title>
+</head>
+
+<body>
+  <div id="toc"></div>
+  <div id="article">
+    <h1>1. First h1</h1>
+    <h2>1.1. First h1, First h2</h2>
+    <h2>1.2. First h1, Second h2</h2>
+    <h3>1.3. First h1, Second h2, First h3</h3>
+
+    <h1>2. Second h1</h1>
+    <h2>2.1. Second h1, First h2</h2>
+    <h2>2.2. Second h1, Second h2</h2>
+    <h3>2.3. Second h1, Second h2, First h3</h3>
+  </div>
+</body>
+
+</html>
