@@ -1,153 +1,198 @@
-const extractTitles = (titles, node, depthLimit = 3) => {
-  const tagName = node.tagName ?? '';
-  const depth = Number(tagName.replace('H', ''));
+class TocContent {
+  id;
+  href;
+  depth;
+  text;
+  parent = null;
+  children = [];
 
-  if (Number.isNaN(depth) === false && depth <= depthLimit) {
-    titles.push(node);
+  constructor(element) {
+    element.id = element.textContent.replaceAll('.', '_').replaceAll(' ', '_');
+
+    this.id = element.id;
+    this.href = `#${element.id}`;
+    this.depth = Number(element.tagName.replace('H', ''));
+    this.text = element.textContent;
   }
 
-  for (const child of node.children) {
-    extractTitles(titles, child);
+  setParent(parent) {
+    this.parent = parent;
+    this.parent.children.push(this);
+
+    return this;
   }
 
-  return titles;
-};
+  findParent(depth) {
+    let parent = this;
 
-const createContent = (element) => {
-  element.id = element.textContent.replaceAll('.', '_').replaceAll(' ', '_');
+    while (parent) {
+      if (parent.depth < depth) {
+        break;
+      }
 
-  return {
-    id: element.id,
-    href: `#${element.id}`,
-    depth: Number(element.tagName.replace('H', '')),
-    text: element.textContent,
-    parent: null,
-    children: [],
-    setRelations(parent) {
-      this.parent = parent;
-      this.parent.children.push(this);
+      parent = parent.parent;
+    }
 
-      return this;
-    },
-    findParent(depth) {
-      let parent = this;
+    return parent;
+  }
+}
 
-      while (parent) {
-        if (parent.depth < depth) {
-          break;
+class TocMaker {
+  tocElement;
+  targetElement;
+  text;
+  depthLimit = 3;
+  style = {};
+
+  constructor(
+    tocElement,
+    targetElement,
+    text = 'Table of Contents',
+    style = {},
+    depthLimit = 3,
+  ) {
+    this.tocElement = tocElement;
+    this.targetElement = targetElement;
+    this.text = text;
+    this.style = style;
+    this.depthLimit = depthLimit;
+  }
+
+  static init(
+    tocElement,
+    targetElement,
+    text = this.text,
+    style = {},
+    depthLimit = 3,
+  ) {
+    return new TocMaker(tocElement, targetElement, text, style, depthLimit);
+  }
+
+  #extractTitles(titles, node, depthLimit = 3) {
+    const tagName = node.tagName ?? '';
+    const depth = Number(tagName.replace('H', ''));
+
+    if (Number.isNaN(depth) === false && depth <= depthLimit) {
+      titles.push(node);
+    }
+
+    for (const child of node.children) {
+      this.#extractTitles(titles, child);
+    }
+
+    return titles;
+  }
+
+  #createContents(titles) {
+    const contents = [];
+
+    let last = null;
+
+    while (titles.length > 0) {
+      const content = new TocContent(titles.shift());
+
+      if (last === null) {
+        last = content;
+        contents.push(last);
+
+        continue;
+      }
+
+      if (last.depth < content.depth) {
+        last = content.setParent(last);
+
+        continue;
+      }
+
+      if (last.depth === content.depth) {
+        if (last.parent) {
+          last = content.setParent(last.parent);
+
+          continue;
         }
-
-        parent = parent.parent;
       }
 
-      return parent;
-    },
-  };
-};
+      if (last.depth > content.depth) {
+        const parent = last.findParent(content.depth);
 
-const createContents = (titles) => {
-  const contents = [];
+        if (parent) {
+          last = content.setParent(parent);
 
-  let last = null;
+          continue;
+        }
+      }
 
-  while (titles.length > 0) {
-    const content = createContent(titles.shift());
-
-    if (last === null) {
       last = content;
-      contents.push(last);
-
-      continue;
+      contents.push(content);
     }
 
-    if (last.depth < content.depth) {
-      last = content.setRelations(last);
+    return contents;
+  }
 
-      continue;
+  #createTocText(text) {
+    const h1 = document.createElement('h1');
+
+    h1.innerText = text;
+
+    return h1;
+  }
+
+  #createTocListItems(items, content) {
+    const anchor = document.createElement('a');
+
+    anchor.innerText = content.text;
+    anchor.href = content.href;
+
+    const li = document.createElement('li');
+
+    li.appendChild(anchor);
+    li.style.paddingLeft = `${10 * content.depth}px`;
+
+    items.push(li);
+
+    for (const child of content.children) {
+      this.#createTocListItems(items, child);
     }
 
-    if (last.depth === content.depth) {
-      if (last.parent) {
-        last = content.setRelations(last.parent);
+    return items;
+  }
 
-        continue;
-      }
+  #createTocList(contents, styles = {}) {
+    styles.listStyle = 'none';
+
+    const ul = document.createElement('ul');
+
+    for (const [key, val] of Object.entries(styles)) {
+      ul.style[key] = val;
     }
 
-    if (last.depth > content.depth) {
-      const parent = last.findParent(content.depth);
-
-      if (parent) {
-        last = content.setRelations(parent);
-
-        continue;
-      }
+    while (contents.length > 0) {
+      ul.append(...this.#createTocListItems([], contents.shift()));
     }
 
-    last = content;
-    contents.push(content);
+    return ul;
   }
 
-  return contents;
-};
-
-const createTocText = (text) => {
-  const h1 = document.createElement('h1');
-
-  h1.innerText = text;
-
-  return h1;
-};
-
-const createTocListItems = (items, content) => {
-  const anchor = document.createElement('a');
-
-  anchor.innerText = content.text;
-  anchor.href = content.href;
-
-  const li = document.createElement('li');
-
-  li.appendChild(anchor);
-  li.style.paddingLeft = `${10 * content.depth}px`;
-
-  items.push(li);
-
-  for (const child of content.children) {
-    createTocListItems(items, child);
+  setStyle(style = {}) {
+    this.style = style;
   }
 
-  return items;
-};
+  render() {
+    const titles = this.#extractTitles([], this.targetElement, this.depthLimit);
+    const contents = this.#createContents(titles);
 
-const createTocList = (contents, styles = {}) => {
-  styles.listStyle = 'none';
-
-  const ul = document.createElement('ul');
-
-  for (const [key, val] of Object.entries(styles)) {
-    ul.style[key] = val;
+    this.tocElement.prepend(
+      this.#createTocText(this.text),
+      this.#createTocList(contents, this.style),
+      document.createElement('hr'),
+    );
   }
 
-  while (contents.length > 0) {
-    ul.append(...createTocListItems([], contents.shift()));
+  remove() {
+    const children = Array.from(this.tocElement.childNodes);
+
+    while (children.length > 0) {
+      this.tocElement.removeChild(children.pop());
+    }
   }
-
-  return ul;
-};
-
-const renderTableOfContents = (
-  toc,
-  target,
-  text,
-  styles = {},
-  depthLimit = 3,
-) => {
-  const titles = extractTitles([], target, depthLimit);
-  const contents = createContents(titles);
-
-  toc.prepend(
-    createTocText(text),
-    createTocList(contents, styles),
-    document.createElement('hr'),
-  );
-};
+}

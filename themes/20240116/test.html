@@ -10,11 +10,11 @@
       const article = document.getElementById('article')
 
       if (article) {
-        renderTableOfContents(article, article, 'Table of Contents', {
+        TocMaker.init(article, article, 'Table of Contents', {
           padding: '20px',
           backgroundColor: '#f6f8fa',
           borderRadius: '0.5rem'
-        })
+        }).render();
       }
     })
   </script>

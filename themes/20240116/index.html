@@ -373,11 +373,11 @@
       const article = document.querySelector('#content .entry-content .tt_article_useless_p_margin');
 
       if (article) {
-        renderTableOfContents(article, article, '목차', {
+        TocMaker.init(article, article, '목차', {
           padding: '20px',
           backgroundColor: '#f6f8fa',
           borderRadius: '0.5rem'
-        });
+        }).render();
       }
     }
 
